@@ -1,10 +1,10 @@
-package com.londonappbrewery.flashchatnewfirebase;
+package com.rakeemshelby.flashchatnewfirebase;
 
-import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
 import android.util.Log;
@@ -14,9 +14,12 @@ import android.view.inputmethod.EditorInfo;
 import android.widget.AutoCompleteTextView;
 import android.widget.EditText;
 import android.widget.TextView;
-import android.widget.Toast;
 
-
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.AuthResult;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 
 
 public class RegisterActivity extends AppCompatActivity {
@@ -33,7 +36,7 @@ public class RegisterActivity extends AppCompatActivity {
     private EditText mConfirmPasswordView;
 
     // Firebase instance variables
-
+    private FirebaseAuth mAuth;
 
 
     @Override
@@ -41,10 +44,10 @@ public class RegisterActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_register);
 
-        mEmailView = (AutoCompleteTextView) findViewById(R.id.register_email);
-        mPasswordView = (EditText) findViewById(R.id.register_password);
-        mConfirmPasswordView = (EditText) findViewById(R.id.register_confirm_password);
-        mUsernameView = (AutoCompleteTextView) findViewById(R.id.register_username);
+        mEmailView = findViewById(R.id.register_email);
+        mPasswordView = findViewById(R.id.register_password);
+        mConfirmPasswordView = findViewById(R.id.register_confirm_password);
+        mUsernameView = findViewById(R.id.register_username);
 
         // Keyboard sign in action
         mConfirmPasswordView.setOnEditorActionListener(new TextView.OnEditorActionListener() {
@@ -59,7 +62,7 @@ public class RegisterActivity extends AppCompatActivity {
         });
 
         // TODO: Get hold of an instance of FirebaseAuth
-
+        mAuth = FirebaseAuth.getInstance();
 
     }
 
@@ -105,7 +108,7 @@ public class RegisterActivity extends AppCompatActivity {
             focusView.requestFocus();
         } else {
             // TODO: Call create FirebaseUser() here
-
+            createFirebaseUser();
         }
     }
 
@@ -116,17 +119,56 @@ public class RegisterActivity extends AppCompatActivity {
 
     private boolean isPasswordValid(String password) {
         //TODO: Add own logic to check for a valid password (minimum 6 characters)
-        return true;
+        String confirmPassword = mConfirmPasswordView.getText().toString();
+
+        return confirmPassword.equals(password) && password.length() > 4;
     }
 
     // TODO: Create a Firebase user
+    private void createFirebaseUser()
+    {
+        String email = mEmailView.getText().toString();
+        String pass = mPasswordView.getText().toString();
+        mAuth.createUserWithEmailAndPassword(email, pass).addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
+            @Override
+            public void onComplete(@NonNull Task<AuthResult> task) {
+                Log.d("Chat","user created complete " + task.isSuccessful());
 
+                if(!task.isSuccessful())
+                {
+                    Log.d("Chat", "user created failed");
+                    showErrorDialog("Registration attempt Failed");
+                }
+                else
+                {
+                    saveDisplayName();
+                    Intent intent = new Intent(RegisterActivity.this, LoginActivity.class);
+
+                    finish();
+                    startActivity(intent);
+                }
+            }
+        });
+    }
 
     // TODO: Save the display name to Shared Preferences
-
+    private void saveDisplayName()
+    {
+        String displayName = mUsernameView.getText().toString();
+        SharedPreferences prefs  = getSharedPreferences(CHAT_PREFS,0);
+        prefs.edit().putString(DISPLAY_NAME_KEY,displayName).apply();
+    }
 
     // TODO: Create an alert dialog to show in case registration failed
-
+    private void showErrorDialog(String message)
+    {
+        new AlertDialog.Builder(this)
+        .setTitle("Oops")
+        .setMessage(message)
+        .setPositiveButton(android.R.string.ok,null)
+        .setIcon(android.R.drawable.ic_dialog_alert)
+        .show();
+    }
 
 
 
